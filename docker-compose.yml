@@ -76,9 +76,7 @@ services:
       - backend
 
   api:
-    build:
-      context: .
-      dockerfile: ImageProcessor.Api/Dockerfile
+    image: ghcr.io/${GITHUB_REPOSITORY_OWNER}/imageprocessor-api:${IMAGE_TAG}
     ports:
       - "${API_PORT}:8080"
     environment:
@@ -116,9 +114,7 @@ services:
       - edge
 
   worker:
-    build:
-      context: .
-      dockerfile: ImageProcessor.Worker/Dockerfile
+    image: ghcr.io/${GITHUB_REPOSITORY_OWNER}/imageprocessor-worker:${IMAGE_TAG}
     environment:
       DOTNET_ENVIRONMENT: ${DOTNET_ENVIRONMENT}
       RabbitMQ__Host: rabbitmq
@@ -134,9 +130,7 @@ services:
       - backend
 
   web:
-    build:
-      context: .
-      dockerfile: ImageProcessor.Web/Dockerfile
+    image: ghcr.io/${GITHUB_REPOSITORY_OWNER}/imageprocessor-web:${IMAGE_TAG}
     ports:
       - "${WEB_PORT}:8080"
     environment:

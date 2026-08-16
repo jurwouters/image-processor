@@ -3,6 +3,9 @@
 ##
 ## Get latest from `dotnet new gitignore`
 
+# custom ignores
+test_images/
+
 # dotenv files
 .env
 
