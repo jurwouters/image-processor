@@ -1,0 +1,130 @@
+@page "/process-images"
+
+<PageTitle>Image Processing</PageTitle>
+
+<h1>Image Processing</h1>
+<p class="text-muted">Select your images, choose edit settings, start processing, then download the results.</p>
+
+<div class="row g-4 mt-1">
+    <div class="col-12 col-lg-6">
+        <div class="card">
+            <div class="card-body">
+                <h2 class="h5">1) Set up your images</h2>
+
+                <div class="mb-3">
+                    <label class="form-label">Images</label>
+                    <InputFile OnChange="HandleFilesSelected" multiple class="form-control" />
+                    <div class="form-text">Select one or more images to process.</div>
+                </div>
+
+                @if (_selectedFiles.Count > 0)
+                {
+                    <ul class="list-group mb-3">
+                        @foreach (var file in _selectedFiles)
+                        {
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <span>@file.Name</span>
+                                <small class="text-muted">@FormatSize(file.Size)</small>
+                            </li>
+                        }
+                    </ul>
+                }
+
+                <h3 class="h6">Operations</h3>
+
+                <div class="form-check mb-2">
+                    <input id="resizeEnabled" class="form-check-input" type="checkbox" @bind="_resizeEnabled" />
+                    <label class="form-check-label" for="resizeEnabled">Resize</label>
+                </div>
+
+                @if (_resizeEnabled)
+                {
+                    <div class="row g-2 mb-3">
+                        <div class="col-6">
+                            <label class="form-label">Width</label>
+                            <input type="number" class="form-control" min="1" @bind="_resizeWidth" />
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label">Height</label>
+                            <input type="number" class="form-control" min="1" @bind="_resizeHeight" />
+                        </div>
+                    </div>
+                }
+
+                <div class="form-check mb-2">
+                    <input id="cropEnabled" class="form-check-input" type="checkbox" @bind="_cropEnabled" />
+                    <label class="form-check-label" for="cropEnabled">Crop</label>
+                </div>
+
+                @if (_cropEnabled)
+                {
+                    <div class="row g-2 mb-3">
+                        <div class="col-6 col-md-3">
+                            <label class="form-label">X</label>
+                            <input type="number" class="form-control" min="0" @bind="_cropX" />
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <label class="form-label">Y</label>
+                            <input type="number" class="form-control" min="0" @bind="_cropY" />
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <label class="form-label">Width</label>
+                            <input type="number" class="form-control" min="1" @bind="_cropWidth" />
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <label class="form-label">Height</label>
+                            <input type="number" class="form-control" min="1" @bind="_cropHeight" />
+                        </div>
+                    </div>
+                }
+
+                <button class="btn btn-primary" @onclick="ProcessBatchAsync" disabled="@_isProcessing">Start processing</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-12 col-lg-6">
+        <div class="card h-100">
+            <div class="card-body">
+                <h2 class="h5">2) Progress</h2>
+
+                @if (!string.IsNullOrWhiteSpace(_statusMessage))
+                {
+                    <div class="alert alert-info">@_statusMessage</div>
+                }
+
+                @if (!string.IsNullOrWhiteSpace(_errorMessage))
+                {
+                    <div class="alert alert-danger">@_errorMessage</div>
+                }
+
+                @if (_createdBatch is not null)
+                {
+                    <dl class="row mb-3">
+                        <dt class="col-sm-4">Job reference</dt>
+                        <dd class="col-sm-8"><code>@_createdBatch.Id</code></dd>
+
+                        <dt class="col-sm-4">Status</dt>
+                        <dd class="col-sm-8">@MapBatchStatus(_batchStatus)</dd>
+                    </dl>
+                }
+
+                @if (_downloadItems.Count > 0)
+                {
+                    <h3 class="h6">3) Download</h3>
+                    <p class="text-muted small">Your files are ready to open or download here.</p>
+
+                    <ul class="list-group">
+                        @foreach (var item in _downloadItems)
+                        {
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <span>@item.FileName</span>
+                                <a class="btn btn-outline-secondary btn-sm" href="@item.DownloadUrl" target="_blank" rel="noopener noreferrer" download>Download</a>
+                            </li>
+                        }
+                    </ul>
+                }
+            </div>
+        </div>
+    </div>
+</div>

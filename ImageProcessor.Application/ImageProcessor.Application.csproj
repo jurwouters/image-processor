@@ -1,0 +1,7 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\ImageProcessor.Domain\ImageProcessor.Domain.csproj" />
+  </ItemGroup>
+
+</Project>
