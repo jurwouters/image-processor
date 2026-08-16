@@ -150,20 +150,6 @@ services:
       - backend
       - edge
 
-  cloudflared:
-    image: cloudflare/cloudflared:latest
-    command: tunnel --no-autoupdate run --token ${CLOUDFLARED_TUNNEL_TOKEN}
-    depends_on:
-      api:
-        condition: service_healthy
-      web:
-        condition: service_healthy
-      minio:
-        condition: service_healthy
-    restart: unless-stopped
-    networks:
-      - edge
-
 volumes:
   postgres-data:
   rabbitmq-data:
