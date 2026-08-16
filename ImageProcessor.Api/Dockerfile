@@ -16,7 +16,11 @@ EXPOSE 8081
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
+COPY ["Directory.Packages.props", "./"]
 COPY ["ImageProcessor.Api/ImageProcessor.Api.csproj", "ImageProcessor.Api/"]
+COPY ["ImageProcessor.Application/ImageProcessor.Application.csproj", "ImageProcessor.Application/"]
+COPY ["ImageProcessor.Domain/ImageProcessor.Domain.csproj", "ImageProcessor.Domain/"]
+COPY ["ImageProcessor.Infrastructure/ImageProcessor.Infrastructure.csproj", "ImageProcessor.Infrastructure/"]
 RUN dotnet restore "./ImageProcessor.Api/ImageProcessor.Api.csproj"
 COPY . .
 WORKDIR "/src/ImageProcessor.Api"
