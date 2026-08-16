@@ -11,6 +11,7 @@ FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
 COPY ["Directory.Packages.props", "./"]
+COPY ["Directory.Build.props", "./"]
 COPY ["ImageProcessor.Worker/ImageProcessor.Worker.csproj", "ImageProcessor.Worker/"]
 COPY ["ImageProcessor.Application/ImageProcessor.Application.csproj", "ImageProcessor.Application/"]
 COPY ["ImageProcessor.Domain/ImageProcessor.Domain.csproj", "ImageProcessor.Domain/"]
