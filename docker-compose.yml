@@ -136,6 +136,8 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT}
       Api__BaseUrl: http://api:8080
+    volumes:
+      - web-dpkeys:/home/app/.aspnet/DataProtection-Keys
     healthcheck:
       test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:8080/ || exit 1"]
       interval: 15s
@@ -154,6 +156,7 @@ volumes:
   postgres-data:
   rabbitmq-data:
   minio-data:
+  web-dpkeys:
 
 networks:
   backend:
