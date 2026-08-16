@@ -74,6 +74,7 @@ public partial class ProcessImages : ComponentBase
                 await BatchApiClient.UploadToPresignedUrlAsync(
                     upload.UploadUrl,
                     stream,
+                    file.Size,
                     NormalizeContentType(file.ContentType),
                     CancellationToken.None);
 

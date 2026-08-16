@@ -19,6 +19,7 @@ public sealed class BatchApiClient(HttpClient httpClient)
     public async Task UploadToPresignedUrlAsync(
         string uploadUrl,
         Stream contentStream,
+        long contentLength,
         string contentType,
         CancellationToken cancellationToken)
     {
@@ -28,6 +29,7 @@ public sealed class BatchApiClient(HttpClient httpClient)
         };
 
         request.Content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(contentType);
+        request.Content.Headers.ContentLength = contentLength;
 
         using var response = await httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
         response.EnsureSuccessStatusCode();
