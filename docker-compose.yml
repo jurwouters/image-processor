@@ -15,8 +15,8 @@ services:
       timeout: 5s
       retries: 5
     restart: unless-stopped
-    networks:
-      - backend
+    # networks:
+    #   - backend
 
   rabbitmq:
     image: rabbitmq:4-management
@@ -34,8 +34,8 @@ services:
       timeout: 5s
       retries: 5
     restart: unless-stopped
-    networks:
-      - backend
+    # networks:
+    #   - backend
 
   minio:
     image: minio/minio:latest
@@ -54,9 +54,9 @@ services:
       timeout: 5s
       retries: 5
     restart: unless-stopped
-    networks:
-      - backend
-      - edge
+    # networks:
+    #   - backend
+    #   - edge
 
   minio-init:
     image: minio/mc:latest
@@ -72,85 +72,85 @@ services:
         mc anonymous set download myminio/${S3_BUCKET_NAME};
         exit 0;
     restart: "no"
-    networks:
-      - backend
+    # networks:
+    #   - backend
 
-  api:
-    image: ghcr.io/${GITHUB_REPOSITORY_OWNER}/imageprocessor-api:${IMAGE_TAG}
-    ports:
-      - "${API_PORT}:8080"
-    environment:
-      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT}
-      ConnectionStrings__DefaultConnection: Host=postgres;Port=5432;Database=${POSTGRES_DB};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
-      RabbitMQ__Host: rabbitmq
-      RabbitMQ__Port: 5672
-      RabbitMQ__Username: ${RABBITMQ_USER}
-      RabbitMQ__Password: ${RABBITMQ_PASSWORD}
-      RabbitMQ__QueueName: ${RABBITMQ_QUEUE_NAME}
-      S3__Endpoint: http://minio:9000
-      S3__AccessKey: ${MINIO_ROOT_USER}
-      S3__SecretKey: ${MINIO_ROOT_PASSWORD}
-      S3__BucketName: ${S3_BUCKET_NAME}
-      S3__ForcePathStyle: true
-      Cors__AllowedOrigins__0: ${CORS_ALLOWED_ORIGIN_0}
-    healthcheck:
-      test: ["CMD-SHELL", "wget -q --spider http://localhost:8080/health || exit 1"]
-      interval: 15s
-      timeout: 5s
-      retries: 5
-      start_period: 20s
-    depends_on:
-      postgres:
-        condition: service_healthy
-      rabbitmq:
-        condition: service_healthy
-      minio:
-        condition: service_healthy
-      minio-init:
-        condition: service_completed_successfully
-    restart: unless-stopped
-    networks:
-      - backend
-      - edge
+  # api:
+  #   image: ghcr.io/${GITHUB_REPOSITORY_OWNER}/imageprocessor-api:${IMAGE_TAG}
+  #   ports:
+  #     - "${API_PORT}:8080"
+  #   environment:
+  #     ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT}
+  #     ConnectionStrings__DefaultConnection: Host=postgres;Port=5432;Database=${POSTGRES_DB};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
+  #     RabbitMQ__Host: rabbitmq
+  #     RabbitMQ__Port: 5672
+  #     RabbitMQ__Username: ${RABBITMQ_USER}
+  #     RabbitMQ__Password: ${RABBITMQ_PASSWORD}
+  #     RabbitMQ__QueueName: ${RABBITMQ_QUEUE_NAME}
+  #     S3__Endpoint: http://minio:9000
+  #     S3__AccessKey: ${MINIO_ROOT_USER}
+  #     S3__SecretKey: ${MINIO_ROOT_PASSWORD}
+  #     S3__BucketName: ${S3_BUCKET_NAME}
+  #     S3__ForcePathStyle: true
+  #     Cors__AllowedOrigins__0: ${CORS_ALLOWED_ORIGIN_0}
+  #   healthcheck:
+  #     test: ["CMD-SHELL", "wget -q --spider http://localhost:8080/health || exit 1"]
+  #     interval: 15s
+  #     timeout: 5s
+  #     retries: 5
+  #     start_period: 20s
+  #   depends_on:
+  #     postgres:
+  #       condition: service_healthy
+  #     rabbitmq:
+  #       condition: service_healthy
+  #     minio:
+  #       condition: service_healthy
+  #     minio-init:
+  #       condition: service_completed_successfully
+  #   restart: unless-stopped
+  #   networks:
+  #     - backend
+  #     - edge
 
-  worker:
-    image: ghcr.io/${GITHUB_REPOSITORY_OWNER}/imageprocessor-worker:${IMAGE_TAG}
-    environment:
-      DOTNET_ENVIRONMENT: ${DOTNET_ENVIRONMENT}
-      RabbitMQ__Host: rabbitmq
-      RabbitMQ__Port: 5672
-      RabbitMQ__Username: ${RABBITMQ_USER}
-      RabbitMQ__Password: ${RABBITMQ_PASSWORD}
-      RabbitMQ__QueueName: ${RABBITMQ_QUEUE_NAME}
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-    restart: unless-stopped
-    networks:
-      - backend
+  # worker:
+  #   image: ghcr.io/${GITHUB_REPOSITORY_OWNER}/imageprocessor-worker:${IMAGE_TAG}
+  #   environment:
+  #     DOTNET_ENVIRONMENT: ${DOTNET_ENVIRONMENT}
+  #     RabbitMQ__Host: rabbitmq
+  #     RabbitMQ__Port: 5672
+  #     RabbitMQ__Username: ${RABBITMQ_USER}
+  #     RabbitMQ__Password: ${RABBITMQ_PASSWORD}
+  #     RabbitMQ__QueueName: ${RABBITMQ_QUEUE_NAME}
+  #   depends_on:
+  #     rabbitmq:
+  #       condition: service_healthy
+  #   restart: unless-stopped
+  #   networks:
+  #     - backend
 
-  web:
-    image: ghcr.io/${GITHUB_REPOSITORY_OWNER}/imageprocessor-web:${IMAGE_TAG}
-    ports:
-      - "${WEB_PORT}:8080"
-    environment:
-      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT}
-      Api__BaseUrl: http://api:8080
-    volumes:
-      - web-dpkeys:/home/app/.aspnet/DataProtection-Keys
-    healthcheck:
-      test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:8080/ || exit 1"]
-      interval: 15s
-      timeout: 5s
-      retries: 5
-      start_period: 20s
-    depends_on:
-      api:
-        condition: service_healthy
-    restart: unless-stopped
-    networks:
-      - backend
-      - edge
+  # web:
+  #   image: ghcr.io/${GITHUB_REPOSITORY_OWNER}/imageprocessor-web:${IMAGE_TAG}
+  #   ports:
+  #     - "${WEB_PORT}:8080"
+  #   environment:
+  #     ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT}
+  #     Api__BaseUrl: http://api:8080
+  #   volumes:
+  #     - web-dpkeys:/home/app/.aspnet/DataProtection-Keys
+  #   healthcheck:
+  #     test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:8080/ || exit 1"]
+  #     interval: 15s
+  #     timeout: 5s
+  #     retries: 5
+  #     start_period: 20s
+  #   depends_on:
+  #     api:
+  #       condition: service_healthy
+  #   restart: unless-stopped
+  #   networks:
+  #     - backend
+  #     - edge
 
 volumes:
   postgres-data:
@@ -158,9 +158,9 @@ volumes:
   minio-data:
   web-dpkeys:
 
-networks:
-  backend:
-    name: imageprocessor-backend
-    internal: true
-  edge:
-    name: imageprocessor-edge
+# networks:
+#   backend:
+#     name: imageprocessor-backend
+#     internal: true
+#   edge:
+#     name: imageprocessor-edge
