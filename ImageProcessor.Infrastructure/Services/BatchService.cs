@@ -1,15 +1,13 @@
 using ImageProcessor.Application.Messaging;
+using ImageProcessor.Application.Repositories;
 using ImageProcessor.Application.Services;
 using ImageProcessor.Application.Services.Models.BatchService;
-using ImageProcessor.Application.Services.Storage;
 using ImageProcessor.Domain.Entities;
-using ImageProcessor.Infrastructure.Data;
-using Microsoft.EntityFrameworkCore;
 
-namespace ImageProcessor.Infrastructure.Services.Batch;
+namespace ImageProcessor.Infrastructure.Services;
 
 public sealed class BatchService(
-    ApplicationDbContext db,
+    IBatchRepository batchRepository,
     IProcessingQueue processingQueue,
     IUploadUrlService uploadService) : IBatchService
 {
@@ -20,7 +18,7 @@ public sealed class BatchService(
             throw new ArgumentException("At least one expected image is required.");
         }
 
-        var batch = new Domain.Entities.Batch
+        var batch = new Batch
         {
             Id = command.Id,
             Operations = [..command.Operations],
@@ -28,41 +26,42 @@ public sealed class BatchService(
             CreatedAt = DateTime.UtcNow
         };
 
-        var expectedImages = command.ExpectedImages.Select(image => new Image
-        {
-            Id = Guid.NewGuid(),
-            BatchId = command.Id,
-            S3Key = image.S3Key,
-            FileName = image.FileName,
-            ContentType = image.ContentType,
-            FileSize = 0,
-            Status = ImageStatus.PendingUpload,
-            UploadedAt = null
-        });
+        var expectedImages = command.ExpectedImages
+            .Select(image => new Image
+            {
+                Id = Guid.NewGuid(),
+                BatchId = command.Id,
+                S3Key = image.S3Key,
+                FileName = image.FileName,
+                ContentType = image.ContentType,
+                FileSize = 0,
+                Status = ImageStatus.PendingUpload,
+                UploadedAt = null
+            })
+            .ToList();
 
-        db.Batches.Add(batch);
-        db.Images.AddRange(expectedImages);
-        await db.SaveChangesAsync(cancellationToken);
+        batch.Images = expectedImages;
+
+        await batchRepository.AddAsync(batch, cancellationToken);
 
         return ToResult(batch);
     }
 
     public async Task<BatchResult?> GetBatchAsync(Guid batchId, CancellationToken cancellationToken = default)
     {
-        var batch = await db.Batches
-            .AsNoTracking()
-            .FirstOrDefaultAsync(b => b.Id == batchId, cancellationToken);
+        var batch = await batchRepository.GetByIdWithImagesAsync(batchId, asNoTracking: true, cancellationToken);
 
-        return batch is null
-            ? null
-            : ToResult(batch);
+        if (batch is null)
+        {
+            return null;
+        }
+
+        return ToResult(batch);
     }
 
     public async Task<BatchResult?> StartBatchAsync(Guid batchId, CancellationToken cancellationToken = default)
     {
-        var batch = await db.Batches
-            .Include(b => b.Images)
-            .FirstOrDefaultAsync(b => b.Id == batchId, cancellationToken);
+        var batch = await batchRepository.GetByIdWithImagesAsync(batchId, asNoTracking: false, cancellationToken);
 
         if (batch is null)
         {
@@ -82,6 +81,7 @@ public sealed class BatchService(
         foreach (var image in batch.Images)
         {
             var uploadedObject = await uploadService.GetUploadedObjectMetadataAsync(image.S3Key, cancellationToken);
+
             if (uploadedObject is null)
             {
                 throw new InvalidOperationException($"Image '{image.FileName}' was not uploaded yet.");
@@ -115,15 +115,27 @@ public sealed class BatchService(
         }
 
         batch.Status = BatchStatus.Queued;
-        await db.SaveChangesAsync(cancellationToken);
+
+        await batchRepository.UpdateAsync(batch, cancellationToken);
 
         return ToResult(batch);
     }
 
-    private static BatchResult ToResult(Domain.Entities.Batch batch) => new()
+    private static BatchResult ToResult(Batch batch) => new()
     {
         Id = batch.Id,
         Status = batch.Status,
         CreatedAt = batch.CreatedAt,
+        Images = batch.Images
+            .OrderBy(image => image.FileName)
+            .Select(image => new BatchImageResult
+            {
+                Id = image.Id,
+                FileName = image.FileName,
+                S3Key = image.S3Key,
+                Status = image.Status,
+                ProcessedAt = image.ProcessedAt
+            })
+            .ToArray()
     };
 }

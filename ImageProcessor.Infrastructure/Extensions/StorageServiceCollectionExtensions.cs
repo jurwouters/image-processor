@@ -1,5 +1,5 @@
-﻿using ImageProcessor.Application.Services.Storage;
-using ImageProcessor.Infrastructure.Services.Storage;
+﻿using ImageProcessor.Application.Services;
+using ImageProcessor.Infrastructure.Services;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Minio;

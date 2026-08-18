@@ -77,8 +77,6 @@ public partial class ProcessImages : ComponentBase
                     file.Size,
                     NormalizeContentType(file.ContentType),
                     CancellationToken.None);
-
-                _downloadItems.Add(new DownloadItem(file.Name, BatchApiClient.BuildDownloadUrl(upload.UploadUrl)));
             }
 
             _statusMessage = "Starting image processing...";
@@ -86,7 +84,7 @@ public partial class ProcessImages : ComponentBase
             var started = await BatchApiClient.StartBatchAsync(_createdBatch.Id, CancellationToken.None);
             _batchStatus = started.Status;
 
-            _statusMessage = "Processing started successfully.";
+            await PollBatchUntilFinishedAsync(_createdBatch.Id, CancellationToken.None);
         }
         catch (Exception)
         {
@@ -140,6 +138,38 @@ public partial class ProcessImages : ComponentBase
         => string.IsNullOrWhiteSpace(contentType)
             ? "application/octet-stream"
             : contentType;
+
+    private async Task PollBatchUntilFinishedAsync(Guid batchId, CancellationToken cancellationToken)
+    {
+        while (!cancellationToken.IsCancellationRequested)
+        {
+            var batch = await BatchApiClient.GetBatchStatusAsync(batchId, cancellationToken);
+            _batchStatus = batch.Status;
+
+            _downloadItems.Clear();
+            foreach (var image in batch.Images.Where(image => image.Status == 3 && !string.IsNullOrWhiteSpace(image.DownloadUrl)))
+            {
+                _downloadItems.Add(new DownloadItem(image.FileName, image.DownloadUrl!));
+            }
+
+            if (batch.Status == 3)
+            {
+                _statusMessage = "Processing completed.";
+                return;
+            }
+
+            if (batch.Status == 4)
+            {
+                _errorMessage = "Processing failed for one or more images.";
+                _statusMessage = null;
+                return;
+            }
+
+            _statusMessage = "Processing in progress...";
+            await InvokeAsync(StateHasChanged);
+            await Task.Delay(TimeSpan.FromSeconds(2), cancellationToken);
+        }
+    }
 
     private static string FormatSize(long bytes)
         => bytes >= 1024 * 1024

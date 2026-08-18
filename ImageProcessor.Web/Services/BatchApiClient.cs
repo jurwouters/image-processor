@@ -46,14 +46,14 @@ public sealed class BatchApiClient(HttpClient httpClient)
         return payload;
     }
 
-    public static string BuildDownloadUrl(string uploadUrl)
+    public async Task<GetBatchStatusResponseDto> GetBatchStatusAsync(Guid batchId, CancellationToken cancellationToken)
     {
-        var uri = new Uri(uploadUrl);
-        var builder = new UriBuilder(uri)
-        {
-            Query = string.Empty
-        };
+        var response = await httpClient.GetAsync($"api/batches/{batchId}/status", cancellationToken);
+        response.EnsureSuccessStatusCode();
 
-        return builder.Uri.ToString();
+        var payload = await response.Content.ReadFromJsonAsync<GetBatchStatusResponseDto>(cancellationToken)
+            ?? throw new InvalidOperationException("Get batch status response was empty.");
+
+        return payload;
     }
 }

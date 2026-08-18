@@ -1,5 +1,5 @@
 using ImageProcessor.Application.Services;
-using ImageProcessor.Infrastructure.Services.Batch;
+using ImageProcessor.Infrastructure.Services;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace ImageProcessor.Infrastructure.Extensions;

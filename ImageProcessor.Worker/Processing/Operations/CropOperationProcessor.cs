@@ -1,13 +1,12 @@
 using ImageProcessor.Domain.Operations;
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.Processing;
+using SkiaSharp;
 
 namespace ImageProcessor.Worker.Processing.Operations;
 
 public sealed class CropOperationProcessor(ILogger<CropOperationProcessor> logger)
     : ImageOperationProcessorBase<CropOperation>
 {
-    protected override Task ProcessTypedAsync(Image image, CropOperation operation, CancellationToken cancellationToken)
+    protected override Task<SKBitmap> ProcessTypedAsync(SKBitmap image, CropOperation operation, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
@@ -16,6 +15,11 @@ public sealed class CropOperationProcessor(ILogger<CropOperationProcessor> logge
             throw new ArgumentOutOfRangeException(
                 nameof(operation),
                 "Crop width and height must be greater than zero.");
+        }
+
+        if (image.Width <= 0 || image.Height <= 0)
+        {
+            throw new InvalidOperationException("Cannot crop an empty image.");
         }
 
         var x = Math.Clamp(operation.X, 0, image.Width - 1);
@@ -30,8 +34,13 @@ public sealed class CropOperationProcessor(ILogger<CropOperationProcessor> logge
             width,
             height);
 
-        image.Mutate(context => context.Crop(new Rectangle(x, y, width, height)));
+        var croppedImage = new SKBitmap(width, height, image.ColorType, image.AlphaType, image.ColorSpace);
+        using var canvas = new SKCanvas(croppedImage);
 
-        return Task.CompletedTask;
+        var sourceRect = new SKRectI(x, y, x + width, y + height);
+        var destinationRect = new SKRect(0, 0, width, height);
+        canvas.DrawBitmap(image, sourceRect, destinationRect);
+
+        return Task.FromResult(croppedImage);
     }
 }

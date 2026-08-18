@@ -1,13 +1,12 @@
 using ImageProcessor.Domain.Operations;
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.Processing;
+using SkiaSharp;
 
 namespace ImageProcessor.Worker.Processing.Operations;
 
 public sealed class ResizeOperationProcessor(ILogger<ResizeOperationProcessor> logger)
     : ImageOperationProcessorBase<ResizeOperation>
 {
-    protected override Task ProcessTypedAsync(Image image, ResizeOperation operation, CancellationToken cancellationToken)
+    protected override Task<SKBitmap> ProcessTypedAsync(SKBitmap image, ResizeOperation operation, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
@@ -23,8 +22,15 @@ public sealed class ResizeOperationProcessor(ILogger<ResizeOperationProcessor> l
             operation.Width,
             operation.Height);
 
-        image.Mutate(context => context.Resize(operation.Width, operation.Height));
+        var resizedImage = image.Resize(
+            new SKImageInfo(operation.Width, operation.Height, image.ColorType, image.AlphaType, image.ColorSpace),
+            SKSamplingOptions.Default);
 
-        return Task.CompletedTask;
+        if (resizedImage is null)
+        {
+            throw new InvalidOperationException("Unable to resize image.");
+        }
+
+        return Task.FromResult(resizedImage);
     }
 }

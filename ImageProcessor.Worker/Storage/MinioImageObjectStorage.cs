@@ -1,4 +1,3 @@
-using Microsoft.Extensions.Configuration;
 using Minio;
 using Minio.DataModel.Args;
 
@@ -9,6 +8,7 @@ public sealed class MinioImageObjectStorage(IMinioClient client, IConfiguration 
     public async Task<Stream> DownloadAsync(string s3Key, CancellationToken cancellationToken = default)
     {
         var bucket = configuration["S3:BucketName"] ?? throw new InvalidOperationException("S3:BucketName missing");
+
         var output = new MemoryStream();
 
         await client.GetObjectAsync(
@@ -38,6 +38,17 @@ public sealed class MinioImageObjectStorage(IMinioClient client, IConfiguration 
                 .WithObjectSize(content.Length)
                 .WithStreamData(content)
                 .WithContentType(contentType),
+            cancellationToken);
+    }
+
+    public async Task DeleteAsync(string s3Key, CancellationToken cancellationToken = default)
+    {
+        var bucket = configuration["S3:BucketName"] ?? throw new InvalidOperationException("S3:BucketName missing");
+
+        await client.RemoveObjectAsync(
+            new RemoveObjectArgs()
+                .WithBucket(bucket)
+                .WithObject(s3Key),
             cancellationToken);
     }
 }

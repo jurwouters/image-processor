@@ -5,7 +5,7 @@ namespace ImageProcessor.Worker;
 
 public sealed class Worker(
     IProcessingQueueConsumer consumer,
-    ITaskHandler taskHandler,
+    IServiceScopeFactory scopeFactory,
     ILogger<Worker> logger) : BackgroundService
 {
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -14,6 +14,9 @@ public sealed class Worker(
         {
             try
             {
+                await using var scope = scopeFactory.CreateAsyncScope();
+                var taskHandler = scope.ServiceProvider.GetRequiredService<ITaskHandler>();
+
                 await taskHandler.HandleAsync(message.Payload, stoppingToken);
                 await message.AcknowledgeAsync(stoppingToken);
             }

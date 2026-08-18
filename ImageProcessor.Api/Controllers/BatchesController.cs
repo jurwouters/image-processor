@@ -3,7 +3,6 @@ using ImageProcessor.Api.Contracts.Http.Responses;
 using ImageProcessor.Application.Services;
 using ImageProcessor.Application.Services.Models.BatchService;
 using ImageProcessor.Application.Services.Models.Storage;
-using ImageProcessor.Application.Services.Storage;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ImageProcessor.Api.Controllers;
@@ -98,4 +97,51 @@ public class BatchesController(IBatchService batchService, IUploadUrlService upl
         }
     }
 
+    [HttpGet("{id}/status")]
+    [ProducesResponseType(typeof(GetBatchResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetBatch(Guid id, CancellationToken cancellationToken)
+    {
+        var result = await batchService.GetBatchAsync(id, cancellationToken);
+
+        if (result is null)
+        {
+            return NotFound(new { error = "Batch not found." });
+        }
+
+        var images = new List<GetBatchImageResponse>(result.Images.Count);
+        foreach (var image in result.Images)
+        {
+            string? downloadUrl = null;
+            DateTime? downloadUrlExpiresAtUtc = null;
+
+            if (image.Status == Domain.Entities.ImageStatus.Completed)
+            {
+                var download = await uploadService.CreatePresignedDownloadAsync(image.S3Key, cancellationToken);
+                downloadUrl = download.DownloadUrl;
+                downloadUrlExpiresAtUtc = download.ExpiresAtUtc;
+            }
+
+            images.Add(new GetBatchImageResponse
+            {
+                Id = image.Id,
+                FileName = image.FileName,
+                S3Key = image.S3Key,
+                Status = image.Status,
+                ProcessedAt = image.ProcessedAt,
+                DownloadUrl = downloadUrl,
+                DownloadUrlExpiresAtUtc = downloadUrlExpiresAtUtc
+            });
+        }
+
+        var response = new GetBatchResponse
+        {
+            Id = result.Id,
+            Status = result.Status,
+            CreatedAt = result.CreatedAt,
+            Images = images
+        };
+
+        return Ok(response);
+    }
 }

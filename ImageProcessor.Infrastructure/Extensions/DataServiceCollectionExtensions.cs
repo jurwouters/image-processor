@@ -1,4 +1,6 @@
+using ImageProcessor.Application.Repositories;
 using ImageProcessor.Infrastructure.Data;
+using ImageProcessor.Infrastructure.Repositories;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -14,6 +16,9 @@ public static class DataServiceCollectionExtensions
                 configuration.GetConnectionString("DefaultConnection"),
                 b => b.MigrationsAssembly("ImageProcessor.Infrastructure")
                       .MigrationsHistoryTable("__EFMigrationsHistory", "public")));
+
+        services.AddScoped<IBatchRepository, BatchRepository>();
+        services.AddScoped<IImageRepository, ImageRepository>();
 
         return services;
     }

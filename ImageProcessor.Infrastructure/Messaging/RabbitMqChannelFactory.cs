@@ -3,16 +3,11 @@ using RabbitMQ.Client;
 
 namespace ImageProcessor.Infrastructure.Messaging;
 
-public sealed class RabbitMqChannelFactory : IAsyncDisposable
+public sealed class RabbitMqChannelFactory(IOptions<RabbitMqSettings> settings) : IAsyncDisposable
 {
-    private readonly RabbitMqSettings _settings;
+    private readonly RabbitMqSettings _settings = settings.Value;
     private IConnection? _connection;
     private IChannel? _channel;
-
-    public RabbitMqChannelFactory(IOptions<RabbitMqSettings> settings)
-    {
-        _settings = settings.Value;
-    }
 
     public async Task<IChannel> GetChannelAsync(CancellationToken cancellationToken = default)
     {

@@ -1,5 +1,5 @@
 using ImageProcessor.Domain.Operations;
-using SixLabors.ImageSharp;
+using SkiaSharp;
 
 namespace ImageProcessor.Worker.Processing.Operations;
 
@@ -8,8 +8,11 @@ public abstract class ImageOperationProcessorBase<TOperation> : IImageOperationP
 {
     public Type OperationType => typeof(TOperation);
 
-    public Task ProcessAsync(Image image, ImageOperation operation, CancellationToken cancellationToken = default)
+    public Task<SKBitmap> ProcessAsync(SKBitmap image, ImageOperation operation, CancellationToken cancellationToken = default)
     {
+        ArgumentNullException.ThrowIfNull(image);
+        ArgumentNullException.ThrowIfNull(operation);
+
         if (operation is not TOperation typedOperation)
         {
             throw new ArgumentException(
@@ -20,5 +23,5 @@ public abstract class ImageOperationProcessorBase<TOperation> : IImageOperationP
         return ProcessTypedAsync(image, typedOperation, cancellationToken);
     }
 
-    protected abstract Task ProcessTypedAsync(Image image, TOperation operation, CancellationToken cancellationToken);
+    protected abstract Task<SKBitmap> ProcessTypedAsync(SKBitmap image, TOperation operation, CancellationToken cancellationToken);
 }
