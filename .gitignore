@@ -8,6 +8,10 @@ test_images/
 
 # dotenv files
 .env
+.env.*
+!.env.example
+
+**/appsettings.Development.json
 
 # User-specific files
 *.rsuser
