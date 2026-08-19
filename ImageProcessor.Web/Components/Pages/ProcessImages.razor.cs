@@ -146,14 +146,18 @@ public partial class ProcessImages : ComponentBase
             var batch = await BatchApiClient.GetBatchStatusAsync(batchId, cancellationToken);
             _batchStatus = batch.Status;
 
-            _downloadItems.Clear();
-            foreach (var image in batch.Images.Where(image => image.Status == 3 && !string.IsNullOrWhiteSpace(image.DownloadUrl)))
-            {
-                _downloadItems.Add(new DownloadItem(image.FileName, image.DownloadUrl!));
-            }
-
             if (batch.Status == 3)
             {
+                _downloadItems.Clear();
+
+                if (_createdBatch is not null)
+                {
+                    foreach (var upload in _createdBatch.PresignedUploads)
+                    {
+                        _downloadItems.Add(new DownloadItem(upload.FileName, batchId, upload.Id));
+                    }
+                }
+
                 _statusMessage = "Processing completed.";
                 return;
             }
@@ -187,5 +191,5 @@ public partial class ProcessImages : ComponentBase
             _ => $"Unknown ({status})"
         };
 
-    private sealed record DownloadItem(string FileName, string DownloadUrl);
+    private sealed record DownloadItem(string FileName, Guid BatchId, Guid ImageId);
 }

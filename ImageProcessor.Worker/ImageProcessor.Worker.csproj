@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk.Worker">
+﻿<Project Sdk="Microsoft.NET.Sdk.Worker">
 
   <PropertyGroup>
     <UserSecretsId>dotnet-ImageProcessor.Worker-bfaafc08-af2f-4a09-b302-a097ebac2047</UserSecretsId>

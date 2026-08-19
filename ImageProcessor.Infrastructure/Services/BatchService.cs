@@ -3,34 +3,39 @@ using ImageProcessor.Application.Repositories;
 using ImageProcessor.Application.Services;
 using ImageProcessor.Application.Services.Models.BatchService;
 using ImageProcessor.Domain.Entities;
+using ImageProcessor.Domain.Operations;
 
 namespace ImageProcessor.Infrastructure.Services;
 
 public sealed class BatchService(
     IBatchRepository batchRepository,
     IProcessingQueue processingQueue,
-    IUploadUrlService uploadService) : IBatchService
+    IObjectStorageService objectStorage) : IBatchService
 {
-    public async Task<BatchResult> CreateBatchAsync(CreateBatchCommand command, CancellationToken cancellationToken = default)
+    public async Task<BatchResult> CreateBatchAsync(
+        Guid batchId,
+        IReadOnlyList<ImageOperation> operations,
+        IReadOnlyList<RegisterExpectedImageCommand> expectedImages,
+        CancellationToken cancellationToken = default)
     {
-        if (command.ExpectedImages.Count == 0)
+        if (expectedImages.Count == 0)
         {
             throw new ArgumentException("At least one expected image is required.");
         }
 
         var batch = new Batch
         {
-            Id = command.Id,
-            Operations = [..command.Operations],
+            Id = batchId,
+            Operations = [..operations],
             Status = BatchStatus.Created,
             CreatedAt = DateTime.UtcNow
         };
 
-        var expectedImages = command.ExpectedImages
+        batch.Images = expectedImages
             .Select(image => new Image
             {
-                Id = Guid.NewGuid(),
-                BatchId = command.Id,
+                Id = image.Id,
+                BatchId = batchId,
                 S3Key = image.S3Key,
                 FileName = image.FileName,
                 ContentType = image.ContentType,
@@ -40,8 +45,6 @@ public sealed class BatchService(
             })
             .ToList();
 
-        batch.Images = expectedImages;
-
         await batchRepository.AddAsync(batch, cancellationToken);
 
         return ToResult(batch);
@@ -49,7 +52,7 @@ public sealed class BatchService(
 
     public async Task<BatchResult?> GetBatchAsync(Guid batchId, CancellationToken cancellationToken = default)
     {
-        var batch = await batchRepository.GetByIdWithImagesAsync(batchId, asNoTracking: true, cancellationToken);
+        var batch = await batchRepository.GetByIdAsync(batchId, cancellationToken);
 
         if (batch is null)
         {
@@ -80,7 +83,7 @@ public sealed class BatchService(
 
         foreach (var image in batch.Images)
         {
-            var uploadedObject = await uploadService.GetUploadedObjectMetadataAsync(image.S3Key, cancellationToken);
+            var uploadedObject = await objectStorage.GetObjectMetadataAsync(image.S3Key, cancellationToken);
 
             if (uploadedObject is null)
             {
@@ -102,6 +105,38 @@ public sealed class BatchService(
             image.Status = ImageStatus.Uploaded;
         }
 
+        await EnqueueImageProcessingTasksAsync(batch, cancellationToken);
+
+        batch.Status = BatchStatus.Queued;
+
+        await batchRepository.UpdateAsync(batch, cancellationToken);
+
+        return ToResult(batch);
+    }
+
+    public async Task<BatchImageResult?> GetBatchImageAsync(Guid batchId, Guid imageId, CancellationToken cancellationToken = default)
+    {
+        var batch = await batchRepository.GetByIdWithImagesAsync(batchId, asNoTracking: true, cancellationToken);
+
+        var image = batch?.Images.FirstOrDefault(i => i.Id == imageId);
+
+        if (image is null)
+        {
+            return null;
+        }
+
+        return new BatchImageResult
+        {
+            Id = image.Id,
+            FileName = image.FileName,
+            S3Key = image.S3Key,
+            Status = image.Status,
+            ProcessedAt = image.ProcessedAt
+        };
+    }
+
+    private async Task EnqueueImageProcessingTasksAsync(Batch batch, CancellationToken cancellationToken)
+    {
         foreach (var image in batch.Images)
         {
             var task = new ImageProcessingTask(
@@ -113,29 +148,12 @@ public sealed class BatchService(
 
             await processingQueue.EnqueueAsync(task, cancellationToken);
         }
-
-        batch.Status = BatchStatus.Queued;
-
-        await batchRepository.UpdateAsync(batch, cancellationToken);
-
-        return ToResult(batch);
     }
 
     private static BatchResult ToResult(Batch batch) => new()
     {
         Id = batch.Id,
         Status = batch.Status,
-        CreatedAt = batch.CreatedAt,
-        Images = batch.Images
-            .OrderBy(image => image.FileName)
-            .Select(image => new BatchImageResult
-            {
-                Id = image.Id,
-                FileName = image.FileName,
-                S3Key = image.S3Key,
-                Status = image.Status,
-                ProcessedAt = image.ProcessedAt
-            })
-            .ToArray()
+        CreatedAt = batch.CreatedAt
     };
 }

@@ -15,9 +15,9 @@ public sealed class Worker(
             try
             {
                 await using var scope = scopeFactory.CreateAsyncScope();
-                var taskHandler = scope.ServiceProvider.GetRequiredService<ITaskHandler>();
+                var taskProcessor = scope.ServiceProvider.GetRequiredService<IImageProcessingTaskProcessor>();
 
-                await taskHandler.HandleAsync(message.Payload, stoppingToken);
+                await taskProcessor.HandleAsync(message.Payload, stoppingToken);
                 await message.AcknowledgeAsync(stoppingToken);
             }
             catch (Exception ex)

@@ -31,7 +31,7 @@ public static class StorageServiceCollectionExtensions
                 .WithSSL(useSsl)
                 .Build());
 
-        services.AddScoped<IUploadUrlService, MinioUploadUrlService>();
+        services.AddScoped<IObjectStorageService, MinioObjectStorageService>();
 
         return services;
     }

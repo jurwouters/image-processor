@@ -6,18 +6,29 @@ using Microsoft.EntityFrameworkCore;
 namespace ImageProcessor.Infrastructure.Repositories;
 
 public sealed class ImageRepository(ApplicationDbContext db)
-    : EfRepository<Image>(db), IImageRepository
+    : Repository<Image>(db), IImageRepository
 {
-    public Task<Image?> GetByIdWithBatchAndImagesAsync(
+    public Task<Image?> GetByIdWithBatchAsync(
         Guid batchId,
         Guid imageId,
         CancellationToken cancellationToken = default)
     {
         return Set
             .Include(image => image.Batch)
-            .ThenInclude(batch => batch.Images)
             .FirstOrDefaultAsync(
                 image => image.Id == imageId && image.BatchId == batchId,
                 cancellationToken);
+    }
+
+    public Task<bool> HasIncompleteImagesInBatchAsync(
+        Guid batchId,
+        Guid imageId,
+        CancellationToken cancellationToken = default)
+    {
+        return Set.AnyAsync(
+            image => image.BatchId == batchId
+                && image.Id != imageId
+                && image.Status != ImageStatus.Completed,
+            cancellationToken);
     }
 }

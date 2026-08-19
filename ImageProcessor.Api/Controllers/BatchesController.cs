@@ -2,19 +2,17 @@
 using ImageProcessor.Api.Contracts.Http.Responses;
 using ImageProcessor.Application.Services;
 using ImageProcessor.Application.Services.Models.BatchService;
-using ImageProcessor.Application.Services.Models.Storage;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ImageProcessor.Api.Controllers;
 
 [Route("api/[controller]")]
 [ApiController]
-public class BatchesController(IBatchService batchService, IUploadUrlService uploadService) : ControllerBase
+public class BatchesController(IBatchService batchService, IObjectStorageService objectStorageService) : ControllerBase
 {
     [HttpPost]
-    [ProducesResponseType(typeof(CreateBatchResponse), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public async Task<IActionResult> CreateBatch([FromBody] CreateBatchRequest request, CancellationToken cancellationToken)
+    public async Task<ActionResult<CreateBatchResponse>> CreateBatch([FromBody] CreateBatchRequest request, CancellationToken cancellationToken)
     {
         if (request.ImagesMetadata.Count == 0)
         {
@@ -23,55 +21,58 @@ public class BatchesController(IBatchService batchService, IUploadUrlService upl
 
         var batchId = Guid.NewGuid();
 
-        var presignedUploads = new List<PresignedUploadResult>();
+        var expectedImages = new List<RegisterExpectedImageCommand>(request.ImagesMetadata.Count);
+        var presignedUploads = new List<PresignedUploadResponse>(request.ImagesMetadata.Count);
+
         foreach (var imageMetadata in request.ImagesMetadata)
         {
-            var presignedUrl = await uploadService.CreatePresignedUploadAsync(
+            var imageId = Guid.NewGuid();
+            var presignedUpload = await objectStorageService.CreatePresignedUploadAsync(
                 batchId,
                 imageMetadata.FileName,
                 imageMetadata.ContentType,
                 cancellationToken);
 
-            presignedUploads.Add(presignedUrl);
+            expectedImages.Add(new RegisterExpectedImageCommand
+            {
+                Id = imageId,
+                S3Key = presignedUpload.S3Key,
+                FileName = presignedUpload.FileName,
+                ContentType = presignedUpload.ContentType
+            });
+
+            presignedUploads.Add(new PresignedUploadResponse
+            {
+                Id = imageId,
+                S3Key = presignedUpload.S3Key,
+                UploadUrl = presignedUpload.UploadUrl,
+                ExpiresAtUtc = presignedUpload.ExpiresAtUtc,
+                FileName = presignedUpload.FileName,
+                ContentType = presignedUpload.ContentType
+            });
         }
 
-        var command = new CreateBatchCommand
-        {
-            Id = batchId,
-            Operations = request.Operations,
-            ExpectedImages = presignedUploads.Select(upload => new RegisterExpectedImageCommand
-            {
-                S3Key = upload.S3Key,
-                FileName = upload.FileName,
-                ContentType = upload.ContentType
-            }).ToArray()
-        };
-
-        var batch = await batchService.CreateBatchAsync(command, cancellationToken);
+        var batch = await batchService.CreateBatchAsync(
+            batchId,
+            request.Operations,
+            expectedImages,
+            cancellationToken);
 
         var response = new CreateBatchResponse
         {
             Id = batch.Id,
             Status = batch.Status,
             CreatedAt = batch.CreatedAt,
-            PresignedUploads = presignedUploads.Select(upload => new PresignedUploadResponse
-            {
-                S3Key = upload.S3Key,
-                UploadUrl = upload.UploadUrl,
-                ExpiresAtUtc = upload.ExpiresAtUtc,
-                FileName = upload.FileName,
-                ContentType = upload.ContentType
-            }).ToArray()
+            PresignedUploads = presignedUploads
         };
 
         return Created(response.Id.ToString(), response);
     }
 
     [HttpPost("{id}/start")]
-    [ProducesResponseType(typeof(StartBatchResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
-    public async Task<IActionResult> StartBatch(Guid id, CancellationToken cancellationToken)
+    public async Task<ActionResult<StartBatchResponse>> StartBatch(Guid id, CancellationToken cancellationToken)
     {
         try
         {
@@ -98,9 +99,8 @@ public class BatchesController(IBatchService batchService, IUploadUrlService upl
     }
 
     [HttpGet("{id}/status")]
-    [ProducesResponseType(typeof(GetBatchResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> GetBatch(Guid id, CancellationToken cancellationToken)
+    public async Task<ActionResult<GetBatchStatusResponse>> GetBatchStatus(Guid id, CancellationToken cancellationToken)
     {
         var result = await batchService.GetBatchAsync(id, cancellationToken);
 
@@ -109,39 +109,42 @@ public class BatchesController(IBatchService batchService, IUploadUrlService upl
             return NotFound(new { error = "Batch not found." });
         }
 
-        var images = new List<GetBatchImageResponse>(result.Images.Count);
-        foreach (var image in result.Images)
-        {
-            string? downloadUrl = null;
-            DateTime? downloadUrlExpiresAtUtc = null;
-
-            if (image.Status == Domain.Entities.ImageStatus.Completed)
-            {
-                var download = await uploadService.CreatePresignedDownloadAsync(image.S3Key, cancellationToken);
-                downloadUrl = download.DownloadUrl;
-                downloadUrlExpiresAtUtc = download.ExpiresAtUtc;
-            }
-
-            images.Add(new GetBatchImageResponse
-            {
-                Id = image.Id,
-                FileName = image.FileName,
-                S3Key = image.S3Key,
-                Status = image.Status,
-                ProcessedAt = image.ProcessedAt,
-                DownloadUrl = downloadUrl,
-                DownloadUrlExpiresAtUtc = downloadUrlExpiresAtUtc
-            });
-        }
-
-        var response = new GetBatchResponse
+        var response = new GetBatchStatusResponse
         {
             Id = result.Id,
             Status = result.Status,
-            CreatedAt = result.CreatedAt,
-            Images = images
+            CreatedAt = result.CreatedAt
         };
 
         return Ok(response);
+    }
+
+    [HttpGet("{id}/images/{imageId}/download")]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<ActionResult> DownloadImage(Guid id, Guid imageId, CancellationToken cancellationToken)
+    {
+        var image = await batchService.GetBatchImageAsync(id, imageId, cancellationToken);
+
+        if (image is null)
+        {
+            return NotFound(new { error = "Image not found." });
+        }
+
+        if (image.Status != Domain.Entities.ImageStatus.Completed)
+        {
+            return Conflict(new { error = "Image is not yet processed." });
+        }
+
+        var metadata = await objectStorageService.GetObjectMetadataAsync(image.S3Key, cancellationToken);
+
+        if (metadata is null)
+        {
+            return NotFound(new { error = "Image file not found in storage." });
+        }
+
+        var stream = await objectStorageService.GetObjectStreamAsync(image.S3Key, cancellationToken);
+
+        return File(stream, metadata.ContentType, image.FileName);
     }
 }

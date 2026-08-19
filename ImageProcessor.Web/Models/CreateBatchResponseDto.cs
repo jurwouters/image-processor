@@ -10,6 +10,7 @@ public sealed record CreateBatchResponseDto
 
 public sealed record PresignedUploadDto
 {
+    public required Guid Id { get; init; }
     public required string S3Key { get; init; }
     public required string UploadUrl { get; init; }
     public required DateTime ExpiresAtUtc { get; init; }

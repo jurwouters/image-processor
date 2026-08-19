@@ -6,9 +6,16 @@ using Microsoft.EntityFrameworkCore;
 namespace ImageProcessor.Infrastructure.Repositories;
 
 public sealed class BatchRepository(ApplicationDbContext db)
-    : EfRepository<Batch>(db), IBatchRepository
+    : Repository<Batch>(db), IBatchRepository
 {
-    public async Task<Batch?> GetByIdWithImagesAsync(
+    public Task<Batch?> GetByIdAsync(Guid batchId, CancellationToken cancellationToken = default)
+    {
+        return Set
+            .AsNoTracking()
+            .SingleOrDefaultAsync(batch => batch.Id == batchId, cancellationToken);
+    }
+
+    public Task<Batch?> GetByIdWithImagesAsync(
         Guid batchId,
         bool asNoTracking,
         CancellationToken cancellationToken = default)
@@ -22,6 +29,6 @@ public sealed class BatchRepository(ApplicationDbContext db)
             query = query.AsNoTracking();
         }
 
-        return await query.FirstOrDefaultAsync(cancellationToken);
+        return query.FirstOrDefaultAsync(cancellationToken);
     }
 }

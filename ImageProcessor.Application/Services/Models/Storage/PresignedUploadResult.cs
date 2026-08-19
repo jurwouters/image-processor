@@ -1,6 +1,6 @@
 ﻿namespace ImageProcessor.Application.Services.Models.Storage;
 
-public record PresignedUploadResult
+public sealed record PresignedUploadResult
 {
     public required string S3Key { get; init; }
     public required string UploadUrl { get; init; }

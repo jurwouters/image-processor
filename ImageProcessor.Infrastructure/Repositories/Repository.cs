@@ -4,8 +4,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace ImageProcessor.Infrastructure.Repositories;
 
-public abstract class EfRepository<TEntity>(ApplicationDbContext db)
-    : IRepository<TEntity>
+public abstract class Repository<TEntity>(ApplicationDbContext db) : IRepository<TEntity>
     where TEntity : class
 {
     protected readonly ApplicationDbContext Context = db;

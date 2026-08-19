@@ -37,4 +37,35 @@ app.MapStaticAssets();
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 
+app.MapGet("/download/{batchId:guid}/{imageId:guid}", async (
+    Guid batchId,
+    Guid imageId,
+    BatchApiClient batchApiClient,
+    CancellationToken cancellationToken) =>
+{
+    var response = await batchApiClient.DownloadImageAsync(batchId, imageId, cancellationToken);
+
+    if (!response.IsSuccessStatusCode)
+    {
+        response.Dispose();
+        return Results.NotFound();
+    }
+
+    var contentType = response.Content.Headers.ContentType?.ToString() ?? "application/octet-stream";
+    var fileName = response.Content.Headers.ContentDisposition?.FileNameStar
+                   ?? response.Content.Headers.ContentDisposition?.FileName
+                   ?? "download";
+
+    return Results.Stream(
+        async outputStream =>
+        {
+            using (response)
+            {
+                await response.Content.CopyToAsync(outputStream, cancellationToken);
+            }
+        },
+        contentType,
+        fileName);
+});
+
 app.Run();

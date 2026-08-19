@@ -56,4 +56,12 @@ public sealed class BatchApiClient(HttpClient httpClient)
 
         return payload;
     }
+
+    public Task<HttpResponseMessage> DownloadImageAsync(Guid batchId, Guid imageId, CancellationToken cancellationToken)
+    {
+        return httpClient.GetAsync(
+            $"api/batches/{batchId}/images/{imageId}/download",
+            HttpCompletionOption.ResponseHeadersRead,
+            cancellationToken);
+    }
 }

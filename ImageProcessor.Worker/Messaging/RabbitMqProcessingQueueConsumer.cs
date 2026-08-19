@@ -35,6 +35,11 @@ public sealed class RabbitMqProcessingQueueConsumer(
             var task = JsonSerializer.Deserialize<ImageProcessingTask>(
                 Encoding.UTF8.GetString(ea.Body.Span), _jsonOptions);
 
+            if (task == default)
+            {
+                throw new InvalidOperationException("Received an invalid message from the queue.");
+            }
+
             var message = new QueueMessage(
                 task,
                 ct => channel.BasicAckAsync(ea.DeliveryTag, multiple: false, cancellationToken: ct).AsTask(),
