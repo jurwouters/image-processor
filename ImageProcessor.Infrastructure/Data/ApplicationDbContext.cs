@@ -31,12 +31,6 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             entity.HasKey(e => e.Id);
             entity.Property(e => e.Status).HasConversion<string>();
             entity.Property(e => e.CreatedAt).IsRequired();
-            entity.Property(e => e.Operations)
-                  .HasColumnType("jsonb")
-                  .HasConversion(
-                      v => JsonSerializer.Serialize(v, _jsonOptions),
-                      v => JsonSerializer.Deserialize<List<ImageOperation>>(v, _jsonOptions) ?? new List<ImageOperation>())
-                  .Metadata.SetValueComparer(OperationsComparer);
 
             entity.HasMany(e => e.Images)
                   .WithOne(e => e.Batch)
@@ -52,6 +46,12 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             entity.Property(e => e.ContentType).IsRequired().HasMaxLength(100);
             entity.Property(e => e.Status).HasConversion<string>();
             entity.Property(e => e.UploadedAt).IsRequired(false);
+            entity.Property(e => e.Operations)
+                  .HasColumnType("jsonb")
+                  .HasConversion(
+                      v => JsonSerializer.Serialize(v, _jsonOptions),
+                      v => JsonSerializer.Deserialize<List<ImageOperation>>(v, _jsonOptions) ?? new List<ImageOperation>())
+                  .Metadata.SetValueComparer(OperationsComparer);
             entity.HasIndex(e => new { e.BatchId, e.S3Key }).IsUnique();
         });
     }

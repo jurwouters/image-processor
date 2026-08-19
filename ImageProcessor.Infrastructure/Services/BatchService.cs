@@ -3,8 +3,6 @@ using ImageProcessor.Application.Repositories;
 using ImageProcessor.Application.Services;
 using ImageProcessor.Application.Services.Models.BatchService;
 using ImageProcessor.Domain.Entities;
-using ImageProcessor.Domain.Operations;
-
 namespace ImageProcessor.Infrastructure.Services;
 
 public sealed class BatchService(
@@ -14,7 +12,6 @@ public sealed class BatchService(
 {
     public async Task<BatchResult> CreateBatchAsync(
         Guid batchId,
-        IReadOnlyList<ImageOperation> operations,
         IReadOnlyList<RegisterExpectedImageCommand> expectedImages,
         CancellationToken cancellationToken = default)
     {
@@ -26,7 +23,6 @@ public sealed class BatchService(
         var batch = new Batch
         {
             Id = batchId,
-            Operations = [..operations],
             Status = BatchStatus.Created,
             CreatedAt = DateTime.UtcNow
         };
@@ -41,7 +37,8 @@ public sealed class BatchService(
                 ContentType = image.ContentType,
                 FileSize = 0,
                 Status = ImageStatus.PendingUpload,
-                UploadedAt = null
+                UploadedAt = null,
+                Operations = [..image.Operations]
             })
             .ToList();
 
@@ -144,7 +141,7 @@ public sealed class BatchService(
                 image.Id,
                 image.S3Key,
                 image.FileName,
-                batch.Operations);
+                image.Operations);
 
             await processingQueue.EnqueueAsync(task, cancellationToken);
         }

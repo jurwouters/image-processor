@@ -14,23 +14,23 @@ public class BatchesController(IBatchService batchService, IObjectStorageService
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<CreateBatchResponse>> CreateBatch([FromBody] CreateBatchRequest request, CancellationToken cancellationToken)
     {
-        if (request.ImagesMetadata.Count == 0)
+        if (request.Images.Count == 0)
         {
             return BadRequest(new { error = "At least one image is required." });
         }
 
         var batchId = Guid.NewGuid();
 
-        var expectedImages = new List<RegisterExpectedImageCommand>(request.ImagesMetadata.Count);
-        var presignedUploads = new List<PresignedUploadResponse>(request.ImagesMetadata.Count);
+        var expectedImages = new List<RegisterExpectedImageCommand>(request.Images.Count);
+        var presignedUploads = new List<PresignedUploadResponse>(request.Images.Count);
 
-        foreach (var imageMetadata in request.ImagesMetadata)
+        foreach (var imageRequest in request.Images)
         {
             var imageId = Guid.NewGuid();
             var presignedUpload = await objectStorageService.CreatePresignedUploadAsync(
                 batchId,
-                imageMetadata.FileName,
-                imageMetadata.ContentType,
+                imageRequest.FileName,
+                imageRequest.ContentType,
                 cancellationToken);
 
             expectedImages.Add(new RegisterExpectedImageCommand
@@ -38,7 +38,8 @@ public class BatchesController(IBatchService batchService, IObjectStorageService
                 Id = imageId,
                 S3Key = presignedUpload.S3Key,
                 FileName = presignedUpload.FileName,
-                ContentType = presignedUpload.ContentType
+                ContentType = presignedUpload.ContentType,
+                Operations = imageRequest.Operations
             });
 
             presignedUploads.Add(new PresignedUploadResponse
@@ -54,7 +55,6 @@ public class BatchesController(IBatchService batchService, IObjectStorageService
 
         var batch = await batchService.CreateBatchAsync(
             batchId,
-            request.Operations,
             expectedImages,
             cancellationToken);
 

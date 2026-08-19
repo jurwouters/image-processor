@@ -1,3 +1,5 @@
+using ImageProcessor.Domain.Operations;
+
 namespace ImageProcessor.Domain.Entities;
 
 public class Image
@@ -10,6 +12,7 @@ public class Image
     public ImageStatus Status { get; set; } = ImageStatus.PendingUpload;
     public DateTime? UploadedAt { get; set; }
     public DateTime? ProcessedAt { get; set; }
+    public List<ImageOperation> Operations { get; set; } = [];
 
     public Guid BatchId { get; set; }
     public Batch Batch { get; set; } = null!;

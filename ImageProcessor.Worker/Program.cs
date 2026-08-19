@@ -19,6 +19,7 @@ builder.Services.AddScoped<IImageProcessingTaskProcessor, ImageProcessingTaskPro
 
 builder.Services.AddSingleton<IImageOperationProcessor, CropOperationProcessor>();
 builder.Services.AddSingleton<IImageOperationProcessor, ResizeOperationProcessor>();
+builder.Services.AddSingleton<IImageOperationProcessor, RotateOperationProcessor>();
 builder.Services.AddSingleton<IImageOperationProcessorResolver, ImageOperationProcessorResolver>();
 
 builder.Services.AddHostedService<Worker>();

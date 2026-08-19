@@ -1,9 +1,11 @@
 @page "/process-images"
 
+<script type="module" src="@Assets["Components/Pages/ProcessImages.razor.js"]"></script>
+
 <PageTitle>Image Processing</PageTitle>
 
 <h1>Image Processing</h1>
-<p class="text-muted">Select your images, choose edit settings, start processing, then download the results.</p>
+<p class="text-muted">Select your images, configure operations per image, start processing, then download the results.</p>
 
 <div class="row g-4 mt-1">
     <div class="col-12 col-lg-6">
@@ -13,69 +15,167 @@
 
                 <div class="mb-3">
                     <label class="form-label">Images</label>
-                    <InputFile OnChange="HandleFilesSelected" multiple class="form-control" />
+                    <InputFile id="image-files-input" OnChange="HandleFilesSelected" multiple class="form-control" />
                     <div class="form-text">Select one or more images to process.</div>
                 </div>
 
                 @if (_selectedFiles.Count > 0)
                 {
-                    <ul class="list-group mb-3">
-                        @foreach (var file in _selectedFiles)
-                        {
-                            <li class="list-group-item d-flex justify-content-between align-items-center">
-                                <span>@file.Name</span>
-                                <small class="text-muted">@FormatSize(file.Size)</small>
-                            </li>
-                        }
-                    </ul>
-                }
+                    <div class="card border-secondary mb-3">
+                        <div class="card-body">
+                            <h3 class="h6">Default settings for all images</h3>
 
-                <h3 class="h6">Operations</h3>
+                            <div class="form-text mb-3">Enable any default operation below to apply default settings to all images and disable per-image settings.</div>
 
-                <div class="form-check mb-2">
-                    <input id="resizeEnabled" class="form-check-input" type="checkbox" @bind="_resizeEnabled" />
-                    <label class="form-check-label" for="resizeEnabled">Resize</label>
-                </div>
+                            <div class="form-check mb-2">
+                                <input id="defaultResizeEnabled" class="form-check-input" type="checkbox" @bind="_defaultSettings.ResizeEnabled" />
+                                <label class="form-check-label" for="defaultResizeEnabled">Resize</label>
+                            </div>
 
-                @if (_resizeEnabled)
-                {
-                    <div class="row g-2 mb-3">
-                        <div class="col-6">
-                            <label class="form-label">Width</label>
-                            <input type="number" class="form-control" min="1" @bind="_resizeWidth" />
-                        </div>
-                        <div class="col-6">
-                            <label class="form-label">Height</label>
-                            <input type="number" class="form-control" min="1" @bind="_resizeHeight" />
+                            @if (_defaultSettings.ResizeEnabled)
+                            {
+                                <div class="row g-2 mb-3">
+                                    <div class="col-6">
+                                        <label class="form-label">Width (%)</label>
+                                        <input type="number" class="form-control" min="1" step="0.1" @bind="_defaultSettings.ResizeWidthPercentage" />
+                                    </div>
+                                    <div class="col-6">
+                                        <label class="form-label">Height (%)</label>
+                                        <input type="number" class="form-control" min="1" step="0.1" @bind="_defaultSettings.ResizeHeightPercentage" />
+                                    </div>
+                                </div>
+                            }
+
+                            <div class="form-check mb-2">
+                                <input id="defaultCropEnabled" class="form-check-input" type="checkbox" @bind="_defaultSettings.CropEnabled" />
+                                <label class="form-check-label" for="defaultCropEnabled">Crop</label>
+                            </div>
+
+                            @if (_defaultSettings.CropEnabled)
+                            {
+                                <div class="row g-2 mb-3">
+                                    <div class="col-6 col-md-3">
+                                        <label class="form-label">X</label>
+                                        <input type="number" class="form-control" min="0" @bind="_defaultSettings.CropX" />
+                                    </div>
+                                    <div class="col-6 col-md-3">
+                                        <label class="form-label">Y</label>
+                                        <input type="number" class="form-control" min="0" @bind="_defaultSettings.CropY" />
+                                    </div>
+                                    <div class="col-6 col-md-3">
+                                        <label class="form-label">Width (%)</label>
+                                        <input type="number" class="form-control" min="1" step="0.1" @bind="_defaultSettings.CropWidthPercentage" />
+                                    </div>
+                                    <div class="col-6 col-md-3">
+                                        <label class="form-label">Height (%)</label>
+                                        <input type="number" class="form-control" min="1" step="0.1" @bind="_defaultSettings.CropHeightPercentage" />
+                                    </div>
+                                </div>
+                            }
+
+                            <div class="form-check mb-2">
+                                <input id="defaultRotateEnabled" class="form-check-input" type="checkbox" @bind="_defaultSettings.RotateEnabled" />
+                                <label class="form-check-label" for="defaultRotateEnabled">Rotate</label>
+                            </div>
+
+                            @if (_defaultSettings.RotateEnabled)
+                            {
+                                <div class="row g-2 mb-2">
+                                    <div class="col-12 col-md-4">
+                                        <label class="form-label">Degrees</label>
+                                        <input type="number" class="form-control" step="0.1" @bind="_defaultSettings.RotateDegrees" />
+                                    </div>
+                                </div>
+                            }
                         </div>
                     </div>
-                }
 
-                <div class="form-check mb-2">
-                    <input id="cropEnabled" class="form-check-input" type="checkbox" @bind="_cropEnabled" />
-                    <label class="form-check-label" for="cropEnabled">Crop</label>
-                </div>
+                    <h3 class="h6">Operation settings per image</h3>
 
-                @if (_cropEnabled)
-                {
-                    <div class="row g-2 mb-3">
-                        <div class="col-6 col-md-3">
-                            <label class="form-label">X</label>
-                            <input type="number" class="form-control" min="0" @bind="_cropX" />
+                    @for (var i = 0; i < _selectedFiles.Count; i++)
+                    {
+                        var file = _selectedFiles[i];
+                        var settings = _selectedImageSettings[i];
+
+                        <div class="card mb-3">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-center mb-3">
+                                    <div>
+                                        <strong>@file.Name</strong>
+                                        @if (settings.SourceWidth.HasValue && settings.SourceHeight.HasValue)
+                                        {
+                                            <div class="small text-muted">@settings.SourceWidth x @settings.SourceHeight px</div>
+                                        }
+                                    </div>
+                                    <small class="text-muted">@FormatSize(file.Size)</small>
+                                </div>
+
+                                <fieldset disabled="@IsDefaultSettingsEnabled">
+                                    <div class="form-check mb-2">
+                                        <input id="resizeEnabled-@i" class="form-check-input" type="checkbox" @bind="settings.ResizeEnabled" />
+                                        <label class="form-check-label" for="resizeEnabled-@i">Resize</label>
+                                    </div>
+
+                                    @if (settings.ResizeEnabled)
+                                    {
+                                        <div class="row g-2 mb-3">
+                                            <div class="col-6">
+                                                <label class="form-label">Width</label>
+                                                <input type="number" class="form-control" min="1" @bind="settings.ResizeWidth" />
+                                            </div>
+                                            <div class="col-6">
+                                                <label class="form-label">Height</label>
+                                                <input type="number" class="form-control" min="1" @bind="settings.ResizeHeight" />
+                                            </div>
+                                        </div>
+                                    }
+
+                                    <div class="form-check mb-2">
+                                        <input id="cropEnabled-@i" class="form-check-input" type="checkbox" @bind="settings.CropEnabled" />
+                                        <label class="form-check-label" for="cropEnabled-@i">Crop</label>
+                                    </div>
+
+                                    @if (settings.CropEnabled)
+                                    {
+                                        <div class="row g-2 mb-3">
+                                            <div class="col-6 col-md-3">
+                                                <label class="form-label">X</label>
+                                                <input type="number" class="form-control" min="0" @bind="settings.CropX" />
+                                            </div>
+                                            <div class="col-6 col-md-3">
+                                                <label class="form-label">Y</label>
+                                                <input type="number" class="form-control" min="0" @bind="settings.CropY" />
+                                            </div>
+                                            <div class="col-6 col-md-3">
+                                                <label class="form-label">Width</label>
+                                                <input type="number" class="form-control" min="1" @bind="settings.CropWidth" />
+                                            </div>
+                                            <div class="col-6 col-md-3">
+                                                <label class="form-label">Height</label>
+                                                <input type="number" class="form-control" min="1" @bind="settings.CropHeight" />
+                                            </div>
+                                        </div>
+                                    }
+
+                                    <div class="form-check mb-2">
+                                        <input id="rotateEnabled-@i" class="form-check-input" type="checkbox" @bind="settings.RotateEnabled" />
+                                        <label class="form-check-label" for="rotateEnabled-@i">Rotate</label>
+                                    </div>
+
+                                    @if (settings.RotateEnabled)
+                                    {
+                                        <div class="row g-2 mb-2">
+                                            <div class="col-12 col-md-4">
+                                                <label class="form-label">Degrees</label>
+                                                <input type="number" class="form-control" step="0.1" @bind="settings.RotateDegrees" />
+                                            </div>
+                                        </div>
+                                        <div class="form-text">Rotation is automatically cropped to remove empty corner triangles.</div>
+                                    }
+                                </fieldset>
+                            </div>
                         </div>
-                        <div class="col-6 col-md-3">
-                            <label class="form-label">Y</label>
-                            <input type="number" class="form-control" min="0" @bind="_cropY" />
-                        </div>
-                        <div class="col-6 col-md-3">
-                            <label class="form-label">Width</label>
-                            <input type="number" class="form-control" min="1" @bind="_cropWidth" />
-                        </div>
-                        <div class="col-6 col-md-3">
-                            <label class="form-label">Height</label>
-                            <input type="number" class="form-control" min="1" @bind="_cropHeight" />
-                        </div>
-                    </div>
+                    }
                 }
 
                 <button class="btn btn-primary" @onclick="ProcessBatchAsync" disabled="@_isProcessing">Start processing</button>

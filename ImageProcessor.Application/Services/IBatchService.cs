@@ -1,5 +1,4 @@
 ﻿using ImageProcessor.Application.Services.Models.BatchService;
-using ImageProcessor.Domain.Operations;
 
 namespace ImageProcessor.Application.Services;
 
@@ -7,7 +6,6 @@ public interface IBatchService
 {
     Task<BatchResult> CreateBatchAsync(
         Guid batchId,
-        IReadOnlyList<ImageOperation> operations,
         IReadOnlyList<RegisterExpectedImageCommand> expectedImages,
         CancellationToken cancellationToken = default);
 

@@ -1,5 +1,3 @@
-using ImageProcessor.Domain.Operations;
-
 namespace ImageProcessor.Domain.Entities;
 
 public class Batch
@@ -10,7 +8,6 @@ public class Batch
     public DateTime? StartedAt { get; set; }
     public DateTime? CompletedAt { get; set; }
 
-    public List<ImageOperation> Operations { get; set; } = [];
     public ICollection<Image> Images { get; set; } = [];
 }
 

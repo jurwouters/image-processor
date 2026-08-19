@@ -19,7 +19,7 @@ public sealed class MinioObjectStorageService(IMinioClient client, IConfiguratio
         CancellationToken cancellationToken = default)
     {
         var sanitizedFileName = Path.GetFileName(fileName);
-        var s3Key = $"batches/{batchId}/{Guid.NewGuid():N}-{sanitizedFileName}";
+        var s3Key = $"batches/{batchId}/{Guid.NewGuid():N}";
         const int expirySeconds = 600;
 
         var uploadUrl = await client.PresignedPutObjectAsync(
